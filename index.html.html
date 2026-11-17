@@ -1,0 +1,791 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>দৈনিক কাজের হিসাব পোর্টাল ও লাইভ লগইন</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts (Bangla Supported) -->
+    <link href="https://fonts.googleapis.com/css2?family=Hind+Siliguri:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Hind Siliguri', sans-serif;
+        }
+        .live-bg {
+            background: linear-gradient(-45deg, #0f172a, #1e1b4b, #311042, #0f172a);
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+        }
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        .glass-card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(12px);
+            -webkit-backdrop-filter: blur(12px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .orb {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            opacity: 0.5;
+            animation: floatOrb 10s infinite alternate;
+        }
+        @keyframes floatOrb {
+            0% { transform: translateY(0) scale(1); }
+            100% { transform: translateY(-50px) scale(1.1); }
+        }
+        canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+        }
+    </style>
+</head>
+<body class="live-bg min-h-screen text-slate-100 relative overflow-x-hidden">
+
+    <!-- Canvas for Live Particles -->
+    <canvas id="particleCanvas"></canvas>
+
+    <!-- Glowing Background Orbs -->
+    <div class="orb bg-indigo-600 w-96 h-96 top-10 left-10"></div>
+    <div class="orb bg-purple-600 w-96 h-96 bottom-10 right-10" style="animation-delay: 5s;"></div>
+
+    <!-- MAIN CONTAINER -->
+    <div class="relative z-10 min-h-screen flex flex-col justify-between">
+
+        <!---------------- SECTION 1: AUTHENTICATION (LOGIN / REGISTER) ---------------->
+        <div id="authSection" class="flex-grow flex items-center justify-center p-4">
+            <div class="glass-card w-full max-w-md p-8 rounded-2xl shadow-2xl relative z-20">
+                
+                <!-- Live Digital Clock & Date inside Login -->
+                <div class="text-center mb-6 bg-slate-900/40 p-3 rounded-xl border border-white/10">
+                    <div id="liveClock" class="text-2xl font-bold tracking-wider text-cyan-400">00:00:00 AM</div>
+                    <div id="liveDate" class="text-xs text-slate-300 mt-1">তারিখ লোড হচ্ছে...</div>
+                </div>
+
+                <!-- Tabs for Login / Register -->
+                <div class="flex rounded-xl bg-slate-900/60 p-1 mb-6 border border-white/10">
+                    <button onclick="switchAuthTab('login')" id="loginTabBtn" class="flex-1 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white transition-all shadow-md">লগইন</button>
+                    <button onclick="switchAuthTab('register')" id="regTabBtn" class="flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition-all">রেজিস্ট্রেশন</button>
+                </div>
+
+                <!-- LOGIN FORM -->
+                <form id="loginForm" onsubmit="handleLogin(event)" class="space-y-4">
+                    <h2 class="text-xl font-bold text-center text-white mb-2">অ্যাকাউন্টে প্রবেশ করুন</h2>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">ইউজারনেম</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-user"></i></span>
+                            <input type="text" id="loginUser" required placeholder="আপনার ইউজারনেম দিন" class="w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">পাসওয়ার্ড</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" id="loginPass" required placeholder="••••••••" class="w-full pl-10 pr-10 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 transition-all text-sm">
+                            <button type="button" onclick="togglePass('loginPass', 'loginEye')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <i id="loginEye" class="fa-solid fa-eye-slash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" id="loginBtn" class="w-full py-3 bg-gradient-to-r from-indigo-600 to-purple-600 hover:from-indigo-500 hover:to-purple-500 text-white font-semibold rounded-xl shadow-lg transition-all transform active:scale-95 text-sm">
+                        <i class="fa-solid fa-right-to-bracket mr-2"></i> লগইন করুন
+                    </button>
+                </form>
+
+                <!-- REGISTER FORM -->
+                <form id="registerForm" onsubmit="handleRegister(event)" class="space-y-4 hidden">
+                    <h2 class="text-xl font-bold text-center text-white mb-2">নতুন অ্যাকাউন্ট তৈরি করুন</h2>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">ইউজারনেম</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-user-plus"></i></span>
+                            <input type="text" id="regUser" required placeholder="একটি ইউনিক ইউজারনেম দিন" class="w-full pl-10 pr-4 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-slate-300 mb-1">পাসওয়ার্ড</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-lock"></i></span>
+                            <input type="password" id="regPass" required minlength="6" placeholder="কমপক্ষে ৬ অক্ষরের পাসওয়ার্ড" class="w-full pl-10 pr-10 py-2.5 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-purple-500 transition-all text-sm">
+                            <button type="button" onclick="togglePass('regPass', 'regEye')" class="absolute inset-y-0 right-0 pr-3 flex items-center text-slate-400 hover:text-white">
+                                <i id="regEye" class="fa-solid fa-eye-slash"></i>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="submit" id="regBtn" class="w-full py-3 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-500 hover:to-pink-500 text-white font-semibold rounded-xl shadow-lg transition-all transform active:scale-95 text-sm">
+                        <i class="fa-solid fa-user-check mr-2"></i> রেজিস্টার সম্পন্ন করুন
+                    </button>
+                </form>
+
+            </div>
+        </div>
+
+
+        <!---------------- SECTION 2: MAIN DASHBOARD (HIDDEN UNTIL LOGIN) ---------------->
+        <div id="dashboardSection" class="hidden flex-grow flex flex-col">
+            
+            <!-- Navbar -->
+            <nav class="glass-card border-b border-white/10 px-6 py-4 flex flex-wrap justify-between items-center gap-4 sticky top-0 z-30">
+                <div class="flex items-center space-x-3">
+                    <div class="bg-indigo-600 p-2.5 rounded-xl shadow-lg">
+                        <i class="fa-solid fa-wallet text-xl text-white"></i>
+                    </div>
+                    <div>
+                        <h1 class="text-lg font-bold text-white tracking-wide">দৈনিক কাজের হিসাব পোর্টাল</h1>
+                        <p class="text-xs text-indigo-300">স্বাগতম, <span id="displayUsername" class="font-semibold text-white"></span></p>
+                    </div>
+                </div>
+                <div class="flex items-center space-x-3">
+                    <button onclick="openChangePassModal()" class="px-3.5 py-2 bg-slate-800/80 hover:bg-slate-700 text-xs font-medium rounded-xl border border-white/10 transition flex items-center gap-2">
+                        <i class="fa-solid fa-key text-yellow-400"></i> পাসওয়ার্ড পরিবর্তন
+                    </button>
+                    <button onclick="handleLogout()" class="px-3.5 py-2 bg-rose-600/20 hover:bg-rose-600 text-rose-300 hover:text-white text-xs font-medium rounded-xl border border-rose-500/30 transition flex items-center gap-2">
+                        <i class="fa-solid fa-right-from-bracket"></i> লগআউট
+                    </button>
+                </div>
+            </nav>
+
+            <!-- Main Content Area -->
+            <main class="max-w-7xl w-full mx-auto p-4 md:p-6 space-y-6 flex-grow">
+
+                <!-- Summary Cards -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Total Earned Card -->
+                    <div class="glass-card p-5 rounded-2xl border-l-4 border-emerald-500 shadow-lg flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">মোট উপার্জন (সর্বমোট কাজ)</p>
+                            <h3 id="totalEarned" class="text-2xl font-bold text-emerald-400 mt-1">৳ 0</h3>
+                            <p class="text-[11px] text-emerald-300/80 mt-1">শুরু থেকে এখন পর্যন্ত স্থায়ী হিসাব (কমে না)</p>
+                        </div>
+                        <div class="w-12 h-12 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-400 text-xl">
+                            <i class="fa-solid fa-circle-dollar-to-slot"></i>
+                        </div>
+                    </div>
+
+                    <!-- Total Paid Card -->
+                    <div class="glass-card p-5 rounded-2xl border-l-4 border-blue-500 shadow-lg flex flex-col justify-between">
+                        <div class="flex items-center justify-between">
+                            <div>
+                                <p class="text-xs text-slate-400 font-medium">মোট পরিশোধিত (সর্বমোট জমা)</p>
+                                <h3 id="totalPaid" class="text-2xl font-bold text-blue-400 mt-1">৳ 0</h3>
+                            </div>
+                            <div class="w-10 h-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-400 text-lg">
+                                <i class="fa-solid fa-circle-check"></i>
+                            </div>
+                        </div>
+                        <form onsubmit="receiveDuePayment(event)" class="mt-3 pt-2.5 border-t border-white/10 flex items-center gap-2">
+                            <input type="number" id="receivePayInput" required min="1" placeholder="পরিশোধিত টাকা লিখুন..." class="w-full px-2.5 py-1.5 bg-slate-900/80 border border-blue-500/40 rounded-lg text-white placeholder-slate-400 focus:outline-none focus:border-blue-400 text-xs">
+                            <button type="submit" class="px-3 py-1.5 bg-blue-600 hover:bg-blue-500 text-white text-xs font-semibold rounded-lg whitespace-nowrap transition shadow" title="পরিশোধে যোগ ও বকেয়া থেকে মাইনাস করুন">
+                                <i class="fa-solid fa-check-double mr-1"></i>জমা দিন
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Total Due Card -->
+                    <div class="glass-card p-5 rounded-2xl border-l-4 border-amber-500 shadow-lg flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-slate-400 font-medium">মোট বকেয়া (অবশিষ্ট পাওনা)</p>
+                            <h3 id="totalDue" class="text-2xl font-bold text-amber-400 mt-1">৳ 0</h3>
+                            <p class="text-[11px] text-amber-300/80 mt-1">মোট উপার্জন − মোট পরিশোধিত</p>
+                        </div>
+                        <div class="w-12 h-12 bg-amber-500/10 rounded-xl flex items-center justify-center text-amber-400 text-xl">
+                            <i class="fa-solid fa-clock-rotate-left"></i>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Entry Form & Actions Layout -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    
+                    <!-- Form Box -->
+                    <div class="glass-card p-6 rounded-2xl shadow-xl lg:col-span-1 space-y-4">
+                        <h2 class="text-base font-bold text-white border-b border-white/10 pb-3 flex items-center gap-2">
+                            <i class="fa-solid fa-pen-to-square text-indigo-400"></i> নতুন কাজ ও হিসাব যোগ করুন
+                        </h2>
+                        
+                        <form id="entryForm" onsubmit="saveEntry(event)" class="space-y-4">
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">এন্ট্রির তারিখ ও বার (অটো)</label>
+                                <div class="w-full px-3 py-2.5 bg-slate-900/80 border border-indigo-500/40 rounded-xl text-indigo-300 text-xs flex items-center justify-between shadow-inner">
+                                    <span id="formAutoDateDisplay">লোড হচ্ছে...</span>
+                                    <i class="fa-solid fa-shield-halved text-emerald-400" title="অটো লকড তারিখ"></i>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">কাজের বিবরণ</label>
+                                <input type="text" id="workDesc" required placeholder="যেমন: লোগো ডিজাইন, ব্যানার প্রিন্ট..." class="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm">
+                            </div>
+
+                            <div>
+                                <label class="block text-xs font-medium text-slate-300 mb-1">টাকার পরিমাণ (৳)</label>
+                                <input type="number" id="workAmount" required min="1" placeholder="যেমন: ১৫০০" class="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-sm">
+                            </div>
+
+                            <p class="text-[11px] text-slate-400 bg-slate-900/50 p-2.5 rounded-lg border border-white/5">
+                                <i class="fa-solid fa-circle-info text-indigo-400 mr-1"></i>
+                                কাজের হিসাব জমা দিলে তা স্থায়ীভাবে <strong>মোট উপার্জন</strong> এবং <strong>মোট বকেয়া</strong>-তে যুক্ত হবে।
+                            </p>
+
+                            <button type="submit" id="saveEntryBtn" class="w-full py-3 bg-indigo-600 hover:bg-indigo-500 text-white font-semibold rounded-xl shadow-lg transition-all text-sm flex items-center justify-center gap-2">
+                                <i class="fa-solid fa-plus"></i> হিসাব জমা দিন
+                            </button>
+                        </form>
+                    </div>
+
+                    <!-- Table & Management Box -->
+                    <div class="glass-card p-6 rounded-2xl shadow-xl lg:col-span-2 space-y-4 flex flex-col">
+                        
+                        <!-- Search & Filter Controls -->
+                        <div class="flex flex-wrap justify-between items-center gap-3 border-b border-white/10 pb-3">
+                            <div class="relative flex-1 min-w-[200px]">
+                                <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-slate-400"><i class="fa-solid fa-search"></i></span>
+                                <input type="text" id="searchBox" oninput="renderTable()" placeholder="কাজের বিবরণ বা তারিখ দিয়ে খুঁজুন..." class="w-full pl-9 pr-4 py-2 bg-slate-900/60 border border-slate-700 rounded-xl text-white placeholder-slate-500 focus:outline-none focus:border-indigo-500 text-xs">
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <button onclick="exportCSV()" class="px-3 py-2 bg-emerald-600/20 hover:bg-emerald-600 text-emerald-300 hover:text-white text-xs font-medium rounded-xl border border-emerald-500/30 transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-file-excel"></i> CSV
+                                </button>
+                                <button onclick="window.print()" class="px-3 py-2 bg-blue-600/20 hover:bg-blue-600 text-blue-300 hover:text-white text-xs font-medium rounded-xl border border-blue-500/30 transition flex items-center gap-1.5">
+                                    <i class="fa-solid fa-print"></i> প্রিন্ট
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Table Container -->
+                        <div class="overflow-x-auto flex-grow rounded-xl border border-white/10">
+                            <table class="w-full text-left border-collapse text-xs">
+                                <thead>
+                                    <tr class="bg-slate-900/80 text-slate-300 border-b border-white/10">
+                                        <th class="p-3">তারিখ ও বার</th>
+                                        <th class="p-3">কাজের বিবরণ</th>
+                                        <th class="p-3">পরিমাণ</th>
+                                        <th class="p-3">ধরন</th>
+                                        <th class="p-3 text-center">কার্যক্রম</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="entryTableBody" class="divide-y divide-white/5">
+                                    <!-- Dynamic Rows Will Append Here -->
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                </div>
+
+            </main>
+        </div>
+
+    </div>
+
+
+    <!-- PASSWORD CHANGE MODAL -->
+    <div id="passModal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm hidden flex items-center justify-center p-4">
+        <div class="glass-card w-full max-w-sm p-6 rounded-2xl shadow-2xl relative space-y-4">
+            <h3 class="text-lg font-bold text-white border-b border-white/10 pb-2">পাসওয়ার্ড পরিবর্তন</h3>
+            <form onsubmit="changePassword(event)" class="space-y-3">
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">পুরাতন পাসওয়ার্ড</label>
+                    <input type="password" id="oldPass" required class="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div>
+                    <label class="block text-xs font-medium text-slate-300 mb-1">নতুন পাসওয়ার্ড (কমপক্ষে ৬ অক্ষর)</label>
+                    <input type="password" id="newPass" required minlength="6" class="w-full px-3 py-2 bg-slate-900/60 border border-slate-700 rounded-xl text-white text-sm focus:outline-none focus:border-indigo-500">
+                </div>
+                <div class="flex justify-end space-x-2 pt-2">
+                    <button type="button" onclick="closeChangePassModal()" class="px-4 py-2 bg-slate-700 hover:bg-slate-600 text-xs font-medium rounded-xl text-white transition">বাতিল</button>
+                    <button type="submit" class="px-4 py-2 bg-indigo-600 hover:bg-indigo-500 text-xs font-medium rounded-xl text-white transition">সেভ করুন</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+
+    <!-- FIREBASE & APPLICATION SCRIPT -->
+    <script type="module">
+        // 1. Firebase SDK Import
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+        import { getAnalytics } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-analytics.js";
+        import { 
+            getAuth, 
+            createUserWithEmailAndPassword, 
+            signInWithEmailAndPassword, 
+            signOut, 
+            onAuthStateChanged,
+            updatePassword,
+            EmailAuthProvider,
+            reauthenticateWithCredential
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+        import { 
+            getFirestore, 
+            collection, 
+            addDoc, 
+            deleteDoc, 
+            doc, 
+            query, 
+            orderBy, 
+            onSnapshot 
+        } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
+
+        // 2. আপনার সঠিক Firebase প্রজেক্টের কনফিগারেশন
+        const firebaseConfig = {
+            apiKey: "AIzaSyBXW1pi_Gpr0d78znUD2G04cCpgonNwGJms",
+            authDomain: "digital-khata-55273.firebaseapp.com",
+            projectId: "digital-khata-55273",
+            storageBucket: "digital-khata-55273.firebasestorage.app",
+            messagingSenderId: "581911830223",
+            appId: "1:581911830223:web:0035b62a42f08397see1ba",
+            measurementId: "G-3M18CNRVH5"
+        };
+
+        // Initialize Firebase
+        const app = initializeApp(firebaseConfig);
+        const analytics = getAnalytics(app);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        let currentUser = null;
+        let currentEntries = [];
+        let unsubscribeEntries = null;
+
+        // ইউজারনেমকে Firebase Email ফরম্যাটে রূপান্তর করার হেল্পার ফাংশন
+        function formatUsernameToEmail(username) {
+            return `${username.toLowerCase().replace(/\s+/g, '')}@portal.local`;
+        }
+
+        // --- AUTHENTICATION STATE LISTENER ---
+        onAuthStateChanged(auth, (user) => {
+            const authSection = document.getElementById('authSection');
+            const dashboardSection = document.getElementById('dashboardSection');
+
+            if (user) {
+                currentUser = user;
+                const displayUsername = user.email.split('@')[0];
+                document.getElementById('displayUsername').innerText = displayUsername;
+                
+                authSection.classList.add('hidden');
+                dashboardSection.classList.remove('hidden');
+                
+                // রিয়েল-টাইম ডাটাবেস লিসেনার চালু করা
+                listenToUserEntries(user.uid);
+            } else {
+                currentUser = null;
+                currentEntries = [];
+                if (unsubscribeEntries) unsubscribeEntries();
+                
+                authSection.classList.remove('hidden');
+                dashboardSection.classList.add('hidden');
+                document.getElementById('loginForm').reset();
+            }
+        });
+
+        // --- REGISTER HANDLER ---
+        window.handleRegister = async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('regUser').value.trim();
+            const pass = document.getElementById('regPass').value;
+            const regBtn = document.getElementById('regBtn');
+
+            if (pass.length < 6) {
+                alert("পাসওয়ার্ড কমপক্ষে ৬ অক্ষরের হতে হবে!");
+                return;
+            }
+
+            regBtn.disabled = true;
+            regBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> অপেক্ষা করুন...';
+
+            try {
+                const email = formatUsernameToEmail(username);
+                await createUserWithEmailAndPassword(auth, email, pass);
+                alert("রেজিস্ট্রেশন সফল হয়েছে! আপনি সরাসরি ড্যাশবোর্ডে প্রবেশ করেছেন।");
+                document.getElementById('registerForm').reset();
+            } catch (error) {
+                if (error.code === 'auth/email-already-in-use') {
+                    alert("এই ইউজারনেমটি ইতিমধ্যে ব্যবহৃত হয়েছে। অন্য নাম দিন।");
+                } else {
+                    alert("রেজিস্ট্রেশন ব্যর্থ হয়েছে: " + error.message);
+                }
+            } finally {
+                regBtn.disabled = false;
+                regBtn.innerHTML = '<i class="fa-solid fa-user-check mr-2"></i> রেজিস্টার সম্পন্ন করুন';
+            }
+        };
+
+        // --- LOGIN HANDLER ---
+        window.handleLogin = async function(e) {
+            e.preventDefault();
+            const username = document.getElementById('loginUser').value.trim();
+            const pass = document.getElementById('loginPass').value;
+            const loginBtn = document.getElementById('loginBtn');
+
+            loginBtn.disabled = true;
+            loginBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> লগইন হচ্ছে...';
+
+            try {
+                const email = formatUsernameToEmail(username);
+                await signInWithEmailAndPassword(auth, email, pass);
+            } catch (error) {
+                alert("ভুল ইউজারনেম অথবা পাসওয়ার্ড!");
+            } finally {
+                loginBtn.disabled = false;
+                loginBtn.innerHTML = '<i class="fa-solid fa-right-to-bracket mr-2"></i> লগইন করুন';
+            }
+        };
+
+        // --- LOGOUT HANDLER ---
+        window.handleLogout = async function() {
+            try {
+                await signOut(auth);
+            } catch (error) {
+                alert("লগআউট করতে সমস্যা হয়েছে: " + error.message);
+            }
+        };
+
+        // --- PASSWORD CHANGE HANDLER ---
+        window.changePassword = async function(e) {
+            e.preventDefault();
+            const oldP = document.getElementById('oldPass').value;
+            const newP = document.getElementById('newPass').value;
+
+            if (!currentUser) return;
+
+            try {
+                const credential = EmailAuthProvider.credential(currentUser.email, oldP);
+                await reauthenticateWithCredential(currentUser, credential);
+                await updatePassword(currentUser, newP);
+                
+                alert("পাসওয়ার্ড সফলভাবে পরিবর্তিত হয়েছে!");
+                closeChangePassModal();
+                document.getElementById('oldPass').value = '';
+                document.getElementById('newPass').value = '';
+            } catch (error) {
+                alert("পুরাতন পাসওয়ার্ড সঠিক নয় অথবা কোনো ত্রুটি হয়েছে!");
+            }
+        };
+
+        // --- FIRESTORE REAL-TIME LISTENER ---
+        function listenToUserEntries(uid) {
+            const entriesRef = collection(db, "users", uid, "entries");
+            const q = query(entriesRef, orderBy("timestamp", "desc"));
+
+            unsubscribeEntries = onSnapshot(q, (snapshot) => {
+                currentEntries = [];
+                snapshot.forEach((doc) => {
+                    currentEntries.push({
+                        docId: doc.id,
+                        ...doc.data()
+                    });
+                });
+                renderTable();
+            }, (error) => {
+                console.error("ডেটা লোড করতে সমস্যা হয়েছে:", error);
+            });
+        }
+
+        function getFormattedNow() {
+            const now = new Date();
+            const dateStr = now.toLocaleDateString('bn-BD', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+            const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            return `${dateStr} (${timeStr})`;
+        }
+
+        // --- SAVE NEW WORK ENTRY TO FIRESTORE ---
+        window.saveEntry = async function(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const desc = document.getElementById('workDesc').value;
+            const amount = parseFloat(document.getElementById('workAmount').value);
+            const saveBtn = document.getElementById('saveEntryBtn');
+
+            saveBtn.disabled = true;
+            saveBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin"></i> সেভ হচ্ছে...';
+
+            try {
+                const entriesRef = collection(db, "users", currentUser.uid, "entries");
+                await addDoc(entriesRef, {
+                    timestamp: Date.now(),
+                    date: getFormattedNow(),
+                    desc: desc,
+                    amount: amount,
+                    type: 'work'
+                });
+
+                document.getElementById('workDesc').value = '';
+                document.getElementById('workAmount').value = '';
+            } catch (error) {
+                alert("হিসাব সেভ করতে সমস্যা হয়েছে: " + error.message);
+            } finally {
+                saveBtn.disabled = false;
+                saveBtn.innerHTML = '<i class="fa-solid fa-plus"></i> হিসাব জমা দিন';
+            }
+        };
+
+        // --- RECEIVE DUE PAYMENT TO FIRESTORE ---
+        window.receiveDuePayment = async function(e) {
+            e.preventDefault();
+            if (!currentUser) return;
+
+            const inputEl = document.getElementById('receivePayInput');
+            const payAmount = parseFloat(inputEl.value);
+
+            if (isNaN(payAmount) || payAmount <= 0) {
+                alert("সঠিক টাকার পরিমাণ লিখুন।");
+                return;
+            }
+
+            let totalEarned = 0;
+            let totalPaid = 0;
+            currentEntries.forEach(item => {
+                if (item.type === 'payment') {
+                    totalPaid += item.amount;
+                } else {
+                    totalEarned += item.amount;
+                }
+            });
+            let currentDue = totalEarned - totalPaid;
+
+            if (currentDue <= 0) {
+                alert("বর্তমানে কোনো বকেয়া টাকা নেই!");
+                inputEl.value = '';
+                return;
+            }
+
+            if (payAmount > currentDue) {
+                alert(`বর্তমান বকেয়া রয়েছে ৳ ${currentDue.toLocaleString('en-IN')}। বকেয়ার চেয়ে বেশি টাকা পরিশোধ করা যাবে না।`);
+                return;
+            }
+
+            try {
+                const entriesRef = collection(db, "users", currentUser.uid, "entries");
+                await addDoc(entriesRef, {
+                    timestamp: Date.now(),
+                    date: getFormattedNow(),
+                    desc: "টাকা পরিশোধ (জমা গ্রহণ)",
+                    amount: payAmount,
+                    type: 'payment'
+                });
+
+                inputEl.value = '';
+            } catch (error) {
+                alert("পেমেন্ট সেভ করতে সমস্যা হয়েছে: " + error.message);
+            }
+        };
+
+        // --- DELETE ENTRY FROM FIRESTORE ---
+        window.deleteEntry = async function(docId) {
+            if (!currentUser) return;
+            if (confirm("আপনি কি এই হিসাবটি স্থায়ীভাবে মুছে ফেলতে চান?")) {
+                try {
+                    await deleteDoc(doc(db, "users", currentUser.uid, "entries", docId));
+                } catch (error) {
+                    alert("মুছে ফেলতে সমস্যা হয়েছে: " + error.message);
+                }
+            }
+        };
+
+        // --- RENDER TABLE & CALCULATE SUMMARY ---
+        window.renderTable = function() {
+            const tbody = document.getElementById('entryTableBody');
+            const searchVal = document.getElementById('searchBox').value.toLowerCase();
+
+            tbody.innerHTML = '';
+
+            let totalEarned = 0;
+            let totalPaid = 0;
+
+            currentEntries.forEach(item => {
+                if (item.type === 'payment') {
+                    totalPaid += item.amount;
+                } else {
+                    totalEarned += item.amount;
+                }
+            });
+
+            let totalDue = totalEarned - totalPaid;
+            if (totalDue < 0) totalDue = 0;
+
+            let filteredEntries = currentEntries.filter(item => 
+                item.desc.toLowerCase().includes(searchVal) || item.date.toLowerCase().includes(searchVal)
+            );
+
+            if (filteredEntries.length === 0) {
+                tbody.innerHTML = `<tr><td colspan="5" class="p-6 text-center text-slate-400">কোনো হিসাব পাওয়া যায়নি।</td></tr>`;
+            }
+
+            filteredEntries.forEach(item => {
+                let isPayment = (item.type === 'payment');
+                let typeBadge = isPayment
+                    ? `<span class="px-2.5 py-1 bg-blue-500/20 text-blue-300 rounded-full text-[10px] font-semibold border border-blue-500/30">পরিশোধ জমা (-বকেয়া)</span>`
+                    : `<span class="px-2.5 py-1 bg-emerald-500/20 text-emerald-300 rounded-full text-[10px] font-semibold border border-emerald-500/30">কাজের হিসাব (+উপার্জন)</span>`;
+
+                let tr = document.createElement('tr');
+                tr.className = isPayment ? "bg-blue-950/20 hover:bg-blue-900/30 transition" : "hover:bg-white/5 transition";
+                tr.innerHTML = `
+                    <td class="p-3 text-slate-300 whitespace-nowrap">${item.date}</td>
+                    <td class="p-3 font-medium ${isPayment ? 'text-blue-300' : 'text-white'}">${item.desc}</td>
+                    <td class="p-3 ${isPayment ? 'text-blue-400' : 'text-emerald-400'} font-semibold">${isPayment ? '- ' : '+ '}৳ ${item.amount.toLocaleString('en-IN')}</td>
+                    <td class="p-3">${typeBadge}</td>
+                    <td class="p-3 text-center">
+                        <button onclick="deleteEntry('${item.docId}')" class="p-1.5 bg-rose-500/20 hover:bg-rose-500 text-rose-300 hover:text-white rounded-lg transition" title="মুছে ফেলুন">
+                            <i class="fa-solid fa-trash-can text-xs"></i>
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+
+            document.getElementById('totalEarned').innerText = `৳ ${totalEarned.toLocaleString('en-IN')}`;
+            document.getElementById('totalPaid').innerText = `৳ ${totalPaid.toLocaleString('en-IN')}`;
+            document.getElementById('totalDue').innerText = `৳ ${totalDue.toLocaleString('en-IN')}`;
+        };
+
+        // --- EXPORT CSV ---
+        window.exportCSV = function() {
+            if (currentEntries.length === 0) {
+                alert("এক্সপোর্ট করার মতো কোনো ডেটা নেই!");
+                return;
+            }
+            const username = currentUser.email.split('@')[0];
+            let csvContent = "data:text/csv;charset=utf-8,Date,Description,Amount,Type\n";
+            currentEntries.forEach(e => {
+                let isPayment = (e.type === 'payment');
+                let type = isPayment ? "Payment Received (-Due)" : "Work Added (+Earned, +Due)";
+                csvContent += `"${e.date}","${e.desc}",${e.amount},"${type}"\n`;
+            });
+            let encodedUri = encodeURI(csvContent);
+            let link = document.createElement("a");
+            link.setAttribute("href", encodedUri);
+            link.setAttribute("download", `daily_accounts_${username}.csv`);
+            document.body.appendChild(link);
+            link.click();
+            document.body.removeChild(link);
+        };
+    </script>
+
+    <!-- UI & ANIMATION SCRIPTS -->
+    <script>
+        // Live Particle Canvas
+        const canvas = document.getElementById('particleCanvas');
+        const ctx = canvas.getContext('2d');
+        let particlesArray = [];
+
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+
+        class Particle {
+            constructor() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * canvas.height;
+                this.size = Math.random() * 2 + 1;
+                this.speedX = (Math.random() - 0.5) * 0.5;
+                this.speedY = (Math.random() - 0.5) * 0.5;
+            }
+            update() {
+                this.x += this.speedX;
+                this.y += this.speedY;
+                if (this.x > canvas.width) this.x = 0;
+                if (this.x < 0) this.x = canvas.width;
+                if (this.y > canvas.height) this.y = 0;
+                if (this.y < 0) this.y = canvas.height;
+            }
+            draw() {
+                ctx.fillStyle = 'rgba(255, 255, 255, 0.2)';
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fill();
+            }
+        }
+
+        function initParticles() {
+            particlesArray = [];
+            let count = (canvas.width * canvas.height) / 15000;
+            for (let i = 0; i < count; i++) {
+                particlesArray.push(new Particle());
+            }
+        }
+        initParticles();
+
+        function animateParticles() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            particlesArray.forEach(p => {
+                p.update();
+                p.draw();
+            });
+            requestAnimationFrame(animateParticles);
+        }
+        animateParticles();
+
+        // Live Clock & Auto Date
+        function updateLiveClockAndDate() {
+            const now = new Date();
+            document.getElementById('liveClock').innerText = now.toLocaleTimeString('en-US');
+
+            const options = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+            let dateStr = now.toLocaleDateString('bn-BD', options);
+            
+            document.getElementById('liveDate').innerText = dateStr;
+            document.getElementById('formAutoDateDisplay').innerText = dateStr;
+        }
+        setInterval(updateLiveClockAndDate, 1000);
+        updateLiveClockAndDate();
+
+        // UI Helpers
+        function switchAuthTab(tab) {
+            const loginForm = document.getElementById('loginForm');
+            const registerForm = document.getElementById('registerForm');
+            const loginTabBtn = document.getElementById('loginTabBtn');
+            const regTabBtn = document.getElementById('regTabBtn');
+
+            if (tab === 'login') {
+                loginForm.classList.remove('hidden');
+                registerForm.classList.add('hidden');
+                loginTabBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-indigo-600 text-white transition-all shadow-md";
+                regTabBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+            } else {
+                loginForm.classList.add('hidden');
+                registerForm.classList.remove('hidden');
+                regTabBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg bg-purple-600 text-white transition-all shadow-md";
+                loginTabBtn.className = "flex-1 py-2 text-sm font-semibold rounded-lg text-slate-400 hover:text-white transition-all";
+            }
+        }
+
+        function togglePass(inputId, iconId) {
+            const input = document.getElementById(inputId);
+            const icon = document.getElementById(iconId);
+            if (input.type === "password") {
+                input.type = "text";
+                icon.className = "fa-solid fa-eye";
+            } else {
+                input.type = "password";
+                icon.className = "fa-solid fa-eye-slash";
+            }
+        }
+
+        function openChangePassModal() {
+            document.getElementById('passModal').classList.remove('hidden');
+        }
+        function closeChangePassModal() {
+            document.getElementById('passModal').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>
